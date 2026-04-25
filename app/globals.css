@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+  }
+  body {
+    font-family: var(--font-base), 'Hiragino Maru Gothic ProN', sans-serif;
+    overscroll-behavior-y: none;
+  }
+}
+
+@layer components {
+  /* カード: 白 + ソフトシャドウ、枠線なし */
+  .app-card {
+    @apply bg-white rounded-2xl;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  /* 黒ピル見出し（参照画像の「今日のトレーニング」スタイル） */
+  .app-pill-title {
+    @apply inline-flex items-center gap-1.5 bg-app-navy text-white
+           rounded-full font-bold px-5 py-2;
+  }
+
+  /* ボタン系 */
+  .app-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl font-bold
+           transition-all duration-100 active:opacity-75 active:scale-95 cursor-pointer
+           select-none;
+  }
+  .app-btn-dark {
+    @apply app-btn bg-app-navy text-white;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  }
+  .app-btn-white {
+    @apply app-btn bg-white text-app-navy;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  }
+
+  /* インプット */
+  .app-input {
+    @apply w-full rounded-2xl bg-app-gray px-4 py-3 font-base text-app-navy
+           placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-app-navy/20
+           transition-all;
+  }
+
+  /* タグ/ラベル */
+  .app-tag {
+    @apply inline-flex items-center rounded-full font-bold text-sm px-3 py-1;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .pt-safe {
+    padding-top: max(3rem, env(safe-area-inset-top));
+  }
+}
+
+/* ── キャラクターアニメーション ── */
+@keyframes kk-breathe   { 0%,100%{transform:scale(1)}       50%{transform:scale(1.03)} }
+@keyframes kk-zzz       { 0%{opacity:0;transform:translateY(0) scale(.7)} 25%{opacity:1} 100%{opacity:0;transform:translateY(-22px) scale(1.1)} }
+@keyframes kk-squat-bob { 0%,100%{transform:translateY(0)}  50%{transform:translateY(8px)} }
+@keyframes kk-pushup-rep{ 0%,100%{transform:translateY(-6px) rotate(-2deg)} 50%{transform:translateY(0) rotate(0deg)} }
+@keyframes kk-run-step  { 0%,100%{transform:rotate(-5deg)}  50%{transform:rotate(5deg)} }
+@keyframes kk-celebrate { 0%{transform:translateY(0) scaleY(1) scaleX(1)} 15%{transform:translateY(0) scaleY(.85) scaleX(1.1)} 50%{transform:translateY(-14px) scaleY(1.1) scaleX(.95)} 85%{transform:translateY(-4px)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+@keyframes kk-plank-hold{ 0%,100%{transform:translateY(0)}  33%{transform:translateY(-2px)} 66%{transform:translateY(1px)} }
+@keyframes kk-pullup-rep{ 0%,100%{transform:translateY(6px)} 45%,55%{transform:translateY(-9px)} }
+@keyframes kk-situp-rep { 0%,100%{transform:rotate(0deg)}   50%{transform:rotate(-18deg)} }
+@keyframes kk-back-rep  { 0%,100%{transform:rotate(0deg)}   50%{transform:rotate(12deg)} }
+@keyframes kk-wobble    { 0%,100%{transform:rotate(0deg)}   25%{transform:rotate(-7deg)} 75%{transform:rotate(7deg)} }
+
+.char-sleep    { animation: kk-breathe    3s   ease-in-out infinite; transform-origin:50% 50%; }
+.char-zzz1     { animation: kk-zzz       2.1s  ease-in-out infinite; }
+.char-zzz2     { animation: kk-zzz       2.1s  ease-in-out infinite .7s; }
+.char-zzz3     { animation: kk-zzz       2.1s  ease-in-out infinite 1.4s; }
+.char-squat    { animation: kk-squat-bob  .9s  ease-in-out infinite; transform-origin:50% 60%; }
+.char-pushup   { animation: kk-pushup-rep 1.1s ease-in-out infinite; transform-origin:50% 50%; }
+.char-run      { animation: kk-run-step   .45s ease-in-out infinite; transform-origin:50% 55%; }
+.char-celebrate{ animation: kk-celebrate  .8s  ease-in-out infinite; transform-origin:50% 100%; }
+.char-plank    { animation: kk-plank-hold 1.8s ease-in-out infinite; transform-origin:50% 50%; }
+.char-pullup   { animation: kk-pullup-rep 1.3s ease-in-out infinite; transform-origin:50% 15%; }
+.char-situp    { animation: kk-situp-rep  1.1s ease-in-out infinite; transform-origin:50% 75%; }
+.char-back     { animation: kk-back-rep   1.5s ease-in-out infinite; transform-origin:50% 60%; }
+.char-wobble   { animation: kk-wobble     1s   ease-in-out infinite; transform-origin:50% 80%; }
