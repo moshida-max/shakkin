@@ -2,8 +2,8 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { supabase, getToday } from '@/lib/supabase'
-import { todayNorm as calcNorm } from '@/lib/logic'
-import type { Membership } from '@/lib/types'
+import { todayNorm as calcNorm, calcApproxStats, sumReps } from '@/lib/logic'
+import type { Membership, RepEntry } from '@/lib/types'
 
 function getUnit(exerciseName: string): string {
   if (/プランク|秒/.test(exerciseName)) return '秒'
@@ -30,22 +30,17 @@ function generateDateRange(startDate: string, endDate: string): string[] {
 
 const CARD_COLORS = ['#FFCD3C', '#FF8FAD', '#74B9FF', '#5EC462', '#A29BFE', '#4ECDC4']
 
-type Member = {
-  membership: Membership
-  userName: string
-  color: string
-}
-
-type Entry = { id: string; membership_id: string; date: string; reps: number }
+type Member = { membership: Membership; userName: string; color: string }
+type Entry  = { id: string; membership_id: string; date: string; reps: number }
 
 export default function GroupHistoryPage() {
   const { groupId } = useParams<{ groupId: string }>()
   const router      = useRouter()
 
-  const [group,    setGroup]    = useState<any>(null)
-  const [members,  setMembers]  = useState<Member[]>([])
-  const [entries,  setEntries]  = useState<Entry[]>([])
-  const [loading,  setLoading]  = useState(true)
+  const [group,   setGroup]   = useState<any>(null)
+  const [members, setMembers] = useState<Member[]>([])
+  const [entries, setEntries] = useState<Entry[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [editTarget, setEditTarget] = useState<{ membershipId: string; userName: string; date: string } | null>(null)
   const [editReps,   setEditReps]   = useState(0)
@@ -94,6 +89,9 @@ export default function GroupHistoryPage() {
     setEntries(ents || [])
     setLoading(false)
   }
+
+  const getEntries = (membershipId: string): RepEntry[] =>
+    entries.filter(e => e.membership_id === membershipId) as RepEntry[]
 
   const getReps = (membershipId: string, date: string): number =>
     entries.filter(e => e.membership_id === membershipId && e.date === date)
@@ -147,9 +145,9 @@ export default function GroupHistoryPage() {
     )
   }
 
-  const unit = getUnit(group.exercise_name)
+  const unit    = getUnit(group.exercise_name)
   const earliest = members.map(m => m.membership.start_date).sort()[0] ?? TODAY
-  const dates    = generateDateRange(earliest, TODAY)
+  const dates   = generateDateRange(earliest, TODAY)
 
   return (
     <div className="min-h-screen bg-app-pink flex flex-col">
@@ -159,8 +157,7 @@ export default function GroupHistoryPage() {
           <div className="app-pill-title text-xl flex-1 min-w-0 truncate">{group.name}</div>
           <button
             onClick={() => { setAddReps(0); setAddDate(TODAY); setShowAdd(true) }}
-            className="shrink-0 bg-app-navy text-white rounded-full px-3 py-1.5 text-xs font-bold active:scale-95 transition-transform"
-          >
+            className="shrink-0 bg-app-navy text-white rounded-full px-3 py-1.5 text-xs font-bold active:scale-95 transition-transform">
             ＋ 記録追加
           </button>
         </div>
@@ -168,6 +165,43 @@ export default function GroupHistoryPage() {
       </div>
 
       <div className="flex-1 px-4 pb-10 space-y-3">
+
+        {/* メンバー統計カード */}
+        <div className="app-card overflow-hidden">
+          <div className="bg-app-navy px-4 py-2.5">
+            <span className="font-bold text-white text-sm">メンバー統計</span>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {members.map(m => {
+              const { approxDebt, approxSavings, totalReps } = calcApproxStats(m.membership, getEntries(m.membership.id), TODAY)
+              return (
+                <div key={m.membership.id} className="px-4 py-3 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0"
+                    style={{ background: m.color }}>
+                    {m.userName[0]}
+                  </div>
+                  <div className="font-bold text-app-navy text-sm flex-1 min-w-0 truncate">{m.userName}</div>
+                  <div className="flex gap-3 text-center shrink-0">
+                    <div>
+                      <div className="font-bold text-app-red text-sm">{approxDebt}</div>
+                      <div className="text-[9px] text-gray-400 font-bold">借筋</div>
+                    </div>
+                    <div>
+                      <div className="font-bold text-app-green text-sm">{approxSavings}</div>
+                      <div className="text-[9px] text-gray-400 font-bold">友情</div>
+                    </div>
+                    <div>
+                      <div className="font-bold text-app-blue text-sm">{totalReps}</div>
+                      <div className="text-[9px] text-gray-400 font-bold">総回数</div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* 日付別記録 */}
         {dates.map(date => {
           const activeMembers = members.filter(m => m.membership.start_date <= date)
           if (activeMembers.length === 0) return null
@@ -187,18 +221,16 @@ export default function GroupHistoryPage() {
                   const isCleared = reps >= norm
                   const progress  = norm > 0 ? Math.min(100, (reps / norm) * 100) : 0
                   return (
-                    <button
-                      key={m.membership.id}
+                    <button key={m.membership.id}
                       onClick={() => openEdit(m.membership.id, m.userName, date)}
-                      className="w-full px-4 py-3 flex items-center gap-3 active:bg-gray-50 transition-colors text-left"
-                    >
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0"
+                      className="w-full px-4 py-3 flex items-center gap-3 active:bg-gray-50 transition-colors text-left">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0"
                         style={{ background: m.color }}>
                         {m.userName[0]}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-app-navy text-sm leading-tight">{m.userName}</div>
-                        <div className="h-1 rounded-full bg-gray-100 mt-1 overflow-hidden w-24">
+                        <div className="h-1 rounded-full bg-gray-100 mt-1 overflow-hidden w-20">
                           <div className="h-full rounded-full"
                             style={{ width: `${progress}%`, background: isCleared ? '#5EC462' : m.color }} />
                         </div>
@@ -206,7 +238,7 @@ export default function GroupHistoryPage() {
                       <div className="text-right shrink-0">
                         {reps > 0 ? (
                           <div>
-                            <span className={`font-bold text-lg ${isCleared ? 'text-app-green' : 'text-app-navy'}`}>{reps}</span>
+                            <span className={`font-bold text-base ${isCleared ? 'text-app-green' : 'text-app-navy'}`}>{reps}</span>
                             <span className="text-gray-400 text-xs font-bold">/{norm}{unit}</span>
                           </div>
                         ) : (

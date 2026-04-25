@@ -152,6 +152,7 @@ export default function GroupDetailPage() {
 
       {/* ヘッダー */}
       <div className="pt-safe px-5 pb-4">
+        <Link href="/home" className="text-app-navy/60 font-bold text-sm mb-3 block">← ホーム</Link>
         <div className="flex items-center gap-2 mb-1">
           <div className="app-pill-title text-xl flex-1 min-w-0 truncate">{group.name}</div>
           <button onClick={() => setShowInvite(true)}
