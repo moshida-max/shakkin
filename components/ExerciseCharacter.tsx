@@ -106,9 +106,6 @@ function Cleared({ s }: { s: number }) {
     <svg width={s} height={s*1.2} viewBox="0 0 80 95" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <g className="char-celebrate" style={{transformOrigin:'40px 90px'}}>
         <Head cx={40} cy={18} r={16} face="happy"/>
-        {/* 星 */}
-        <text x="6"  y="14" fontSize="11" fill="#FFCD3C" stroke="none" fontFamily="sans-serif">★</text>
-        <text x="60" y="10" fontSize="8"  fill="#FFCD3C" stroke="none" fontFamily="sans-serif">★</text>
         {/* body */}
         <line x1={40} y1={34} x2={40} y2={60} strokeWidth={SW+1}/>
         {/* 両手バンザイ */}
