@@ -9,21 +9,46 @@ function getUnit(name: string) {
   return '回'
 }
 
+function subtractDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const ms = Date.UTC(y, m - 1, d) - days * 86400000
+  return new Date(ms).toISOString().split('T')[0]
+}
+
 function JoinForm({ group, onJoin, error, joining }: {
   group: any
-  onJoin: (name: string, initial: number) => void
+  onJoin: (name: string, initial: number, todayNorm: number | null, debt: number) => void
   error: string
   joining: boolean
 }) {
   const unit = getUnit(group.exercise_name)
 
-  const [name,        setName]        = useState(() => {
+  const [name,         setName]         = useState(() => {
     if (typeof window === 'undefined') return ''
     try { return JSON.parse(localStorage.getItem('kk_profile') || '{}').name || '' } catch { return '' }
   })
-  const [initialStr,  setInitialStr]  = useState('')
+  const [initialStr,   setInitialStr]   = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [normStr,      setNormStr]      = useState('')
+  const [debtStr,      setDebtStr]      = useState('')
 
-  const canJoin = name.trim().length > 0 && parseInt(initialStr) > 0 && !joining
+  const initial   = parseInt(initialStr) || 0
+  const todayNorm = parseInt(normStr)    || 0
+  const debt      = parseInt(debtStr)    || 0
+
+  const normError = normStr && todayNorm > 0 && todayNorm < initial
+    ? `今日のノルマは初期${unit}数（${initial}）以上にしてください` : ''
+
+  const canJoin = name.trim().length > 0 && initial > 0 && !joining && !normError
+
+  const handleSubmit = () => {
+    onJoin(
+      name.trim(),
+      initial,
+      normStr && todayNorm >= initial ? todayNorm : null,
+      debtStr ? debt : 0,
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -56,10 +81,76 @@ function JoinForm({ group, onJoin, error, joining }: {
         />
       </div>
 
+      {/* 上級設定トグル */}
+      <button
+        type="button"
+        onClick={() => setShowAdvanced(v => !v)}
+        className="flex items-center gap-1.5 text-gray-400 text-xs font-bold w-full">
+        <span className="text-[10px]">{showAdvanced ? '▾' : '▸'}</span>
+        以前からやっている場合の設定（任意）
+      </button>
+
+      {/* 上級設定フィールド */}
+      {showAdvanced && (
+        <div className="rounded-2xl border-2 border-dashed border-gray-200 p-4 space-y-4">
+          <p className="text-gray-400 text-xs font-bold leading-relaxed">
+            このサービスを使う前から続けていた場合、現在の状況に合わせて設定できます。
+          </p>
+
+          {/* 今日のノルマ */}
+          <div>
+            <label className="block font-bold text-app-navy text-sm mb-1">
+              今日のノルマ{unit}数
+              <span className="ml-1 text-gray-400 font-normal text-xs">（任意）</span>
+            </label>
+            <p className="text-gray-400 text-xs font-bold mb-2">
+              現在何{unit}がノルマか入力すると、開始日を自動調整します。
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={normStr}
+              onChange={e => setNormStr(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder={initial > 0 ? `例：${initial + 30}` : '例：40'}
+              autoComplete="off"
+              className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-navy text-2xl text-center focus:outline-none"
+            />
+            {normError && <div className="text-app-red text-xs font-bold mt-1">{normError}</div>}
+            {normStr && todayNorm >= initial && initial > 0 && (
+              <div className="text-app-green text-xs font-bold mt-1">
+                → 開始日：{subtractDays(getToday(), todayNorm - initial)}（{todayNorm - initial}日前）
+              </div>
+            )}
+          </div>
+
+          {/* 現在の借筋 */}
+          <div>
+            <label className="block font-bold text-app-navy text-sm mb-1">
+              現在の借筋数
+              <span className="ml-1 text-gray-400 font-normal text-xs">（任意）</span>
+            </label>
+            <p className="text-gray-400 text-xs font-bold mb-2">
+              すでに積み上がっている借筋があれば入力してください。
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={debtStr}
+              onChange={e => setDebtStr(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="例：50"
+              autoComplete="off"
+              className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-red text-2xl text-center focus:outline-none"
+            />
+          </div>
+        </div>
+      )}
+
       {error && <div className="text-app-red text-sm font-bold">{error}</div>}
 
       <button
-        onClick={() => onJoin(name.trim(), parseInt(initialStr))}
+        onClick={handleSubmit}
         disabled={!canJoin}
         className={`w-full rounded-2xl py-4 font-bold text-base transition-all active:scale-95 ${
           canJoin ? 'bg-app-navy text-white' : 'bg-gray-100 text-gray-300 cursor-not-allowed'
@@ -109,7 +200,7 @@ export default function JoinGroupPage() {
     setSearching(false)
   }
 
-  const handleJoin = async (name: string, initial: number) => {
+  const handleJoin = async (name: string, initial: number, todayNorm: number | null, debt: number) => {
     if (!group || !name || initial <= 0) return
     setJoining(true)
     setError('')
@@ -117,7 +208,7 @@ export default function JoinGroupPage() {
       const uid   = await getOrCreateUserId()
       const today = getToday()
 
-      // 名前をlocalStorageに保存してプロフィール同期
+      // プロフィール同期
       const saved = typeof window !== 'undefined' ? localStorage.getItem('kk_profile') : null
       const p = saved ? JSON.parse(saved) : {}
       const avatar = p.avatar || name[0] || '?'
@@ -128,9 +219,20 @@ export default function JoinGroupPage() {
         .from('memberships').select('id').eq('user_id', uid).eq('group_id', group.id).single()
       if (existing) { router.push('/home'); return }
 
+      // 今日のノルマが指定されていれば開始日を逆算
+      const startDate = todayNorm !== null && todayNorm >= initial
+        ? subtractDays(today, todayNorm - initial)
+        : today
+
       const { error: mErr } = await supabase
         .from('memberships')
-        .insert({ user_id: uid, group_id: group.id, initial_reps: initial, start_date: today })
+        .insert({
+          user_id: uid,
+          group_id: group.id,
+          initial_reps: initial,
+          start_date: startDate,
+          debt_balance: debt > 0 ? debt : 0,
+        })
       if (mErr) throw new Error(mErr.message)
       router.push('/home')
     } catch (e: any) {
