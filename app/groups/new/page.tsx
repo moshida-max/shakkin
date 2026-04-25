@@ -58,7 +58,7 @@ export default function NewGroupPage() {
 
       if (mErr) throw new Error(mErr.message)
 
-      router.push(`/groups/${group.id}`)
+      router.push('/home')
     } catch (e: any) {
       setError(e.message || '作成に失敗しました')
       setLoading(false)

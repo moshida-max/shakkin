@@ -64,13 +64,13 @@ export default function JoinGroupPage() {
 
       const { data: existing } = await supabase
         .from('memberships').select('id').eq('user_id', uid).eq('group_id', group.id).single()
-      if (existing) { router.push(`/groups/${group.id}`); return }
+      if (existing) { router.push('/home'); return }
 
       const { error: mErr } = await supabase
         .from('memberships')
         .insert({ user_id: uid, group_id: group.id, initial_reps: initial, start_date: today })
       if (mErr) throw new Error(mErr.message)
-      router.push(`/groups/${group.id}`)
+      router.push('/home')
     } catch (e: any) {
       setError(e.message || '参加に失敗しました')
       setJoining(false)
