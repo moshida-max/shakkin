@@ -77,7 +77,10 @@ export default function GroupDetailPage() {
         const todayRepsCount = sumReps(myEntries, TODAY)
         const status         = calcStatus(membership, todayRepsCount, norm)
         const { approxDebt, approxSavings, totalReps } = calcApproxStats(membership, myEntries, TODAY)
-        return { membership, user, todayNorm: norm, todayReps: todayRepsCount, status, approxDebt, approxSavings, totalReps }
+        const dispDebt  = membership.debt_balance    || approxDebt
+        const dispSaves = membership.savings_balance || approxSavings
+        const dispTotal = membership.total_cleared_reps || totalReps
+        return { membership, user, todayNorm: norm, todayReps: todayRepsCount, status, approxDebt: dispDebt, approxSavings: dispSaves, totalReps: dispTotal }
       })
 
       setMembers(statsArr)

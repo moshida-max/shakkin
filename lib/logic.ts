@@ -11,7 +11,7 @@ export function daysElapsed(startDate: string, today: string): number {
 
 export function todayNorm(membership: Membership, today: string): number {
   const elapsed = daysElapsed(membership.start_date, today)
-  return membership.initial_reps + elapsed + membership.debt_balance
+  return membership.initial_reps + elapsed
 }
 
 export function sumReps(entries: RepEntry[], date: string): number {

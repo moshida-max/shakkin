@@ -94,12 +94,15 @@ export default function HomePage() {
       const todayRepsCount = sumReps(myEntries, TODAY)
       const status         = calcStatus(membership, todayRepsCount, norm)
       const { approxDebt, approxSavings, totalReps } = calcApproxStats(membership, myEntries, TODAY)
+      const dispDebt  = membership.debt_balance    || approxDebt
+      const dispSaves = membership.savings_balance || approxSavings
+      const dispTotal = membership.total_cleared_reps || totalReps
       return {
         group: mem.groups,
         myStats: {
           membership, user: { id: uid, name, icon_url: null },
           todayNorm: norm, todayReps: todayRepsCount,
-          status, approxDebt, approxSavings, totalReps,
+          status, approxDebt: dispDebt, approxSavings: dispSaves, totalReps: dispTotal,
         } as MemberStats,
         members: membersByGroup[mem.group_id] || [],
       }

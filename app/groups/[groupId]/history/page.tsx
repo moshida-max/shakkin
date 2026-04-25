@@ -52,6 +52,12 @@ export default function GroupHistoryPage() {
   const [addReps,         setAddReps]         = useState(0)
   const [addSaving,       setAddSaving]       = useState(false)
 
+  const [statsTarget,  setStatsTarget]  = useState<Member | null>(null)
+  const [editDebt,     setEditDebt]     = useState('')
+  const [editSavings,  setEditSavings]  = useState('')
+  const [editTotal,    setEditTotal]    = useState('')
+  const [statsSaving,  setStatsSaving]  = useState(false)
+
   const TODAY = getToday()
 
   useEffect(() => { loadAll() }, [groupId])
@@ -120,6 +126,34 @@ export default function GroupHistoryPage() {
     setEditTarget(null)
   }
 
+  const openStatsEdit = (m: Member) => {
+    const { approxDebt, approxSavings, totalReps } = calcApproxStats(m.membership, getEntries(m.membership.id), TODAY)
+    setEditDebt(String(m.membership.debt_balance || approxDebt))
+    setEditSavings(String(m.membership.savings_balance || approxSavings))
+    setEditTotal(String(m.membership.total_cleared_reps || totalReps))
+    setStatsTarget(m)
+  }
+
+  const saveStats = async () => {
+    if (!statsTarget) return
+    setStatsSaving(true)
+    const debt  = parseInt(editDebt)  || 0
+    const saves = parseInt(editSavings) || 0
+    const total = parseInt(editTotal) || 0
+    await supabase.from('memberships').update({
+      debt_balance: debt,
+      savings_balance: saves,
+      total_cleared_reps: total,
+    }).eq('id', statsTarget.membership.id)
+    setMembers(prev => prev.map(m =>
+      m.membership.id === statsTarget.membership.id
+        ? { ...m, membership: { ...m.membership, debt_balance: debt, savings_balance: saves, total_cleared_reps: total } }
+        : m
+    ))
+    setStatsSaving(false)
+    setStatsTarget(null)
+  }
+
   const saveAdd = async () => {
     if (!addMembershipId || addReps <= 0 || !addDate) return
     setAddSaving(true)
@@ -174,8 +208,13 @@ export default function GroupHistoryPage() {
           <div className="divide-y divide-gray-50">
             {members.map(m => {
               const { approxDebt, approxSavings, totalReps } = calcApproxStats(m.membership, getEntries(m.membership.id), TODAY)
+              const dispDebt  = m.membership.debt_balance    || approxDebt
+              const dispSaves = m.membership.savings_balance || approxSavings
+              const dispTotal = m.membership.total_cleared_reps || totalReps
               return (
-                <div key={m.membership.id} className="px-4 py-3 flex items-center gap-3">
+                <button key={m.membership.id}
+                  onClick={() => openStatsEdit(m)}
+                  className="w-full px-4 py-3 flex items-center gap-3 active:bg-gray-50 transition-colors text-left">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0"
                     style={{ background: m.color }}>
                     {m.userName[0]}
@@ -183,19 +222,20 @@ export default function GroupHistoryPage() {
                   <div className="font-bold text-app-navy text-sm flex-1 min-w-0 truncate">{m.userName}</div>
                   <div className="flex gap-3 text-center shrink-0">
                     <div>
-                      <div className="font-bold text-app-red text-sm">{approxDebt}</div>
+                      <div className="font-bold text-app-red text-sm">{dispDebt}</div>
                       <div className="text-[9px] text-gray-400 font-bold">借筋</div>
                     </div>
                     <div>
-                      <div className="font-bold text-app-green text-sm">{approxSavings}</div>
+                      <div className="font-bold text-app-green text-sm">{dispSaves}</div>
                       <div className="text-[9px] text-gray-400 font-bold">友情</div>
                     </div>
                     <div>
-                      <div className="font-bold text-app-blue text-sm">{totalReps}</div>
+                      <div className="font-bold text-app-blue text-sm">{dispTotal}</div>
                       <div className="text-[9px] text-gray-400 font-bold">総回数</div>
                     </div>
                   </div>
-                </div>
+                  <span className="text-gray-300 text-sm shrink-0">›</span>
+                </button>
               )
             })}
           </div>
@@ -323,6 +363,52 @@ export default function GroupHistoryPage() {
               {addSaving ? '追加中...' : '追加する'}
             </button>
             <button onClick={() => setShowAdd(false)} className="w-full py-3 font-bold text-gray-400 text-sm">キャンセル</button>
+          </div>
+        </div>
+      )}
+
+      {/* 統計編集モーダル */}
+      {statsTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end" onClick={() => setStatsTarget(null)}>
+          <div className="w-full max-w-[390px] mx-auto bg-white rounded-t-3xl p-6 pb-10" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
+            <div className="font-bold text-app-navy text-lg mb-0.5">{statsTarget.userName}</div>
+            <div className="text-gray-400 text-sm font-bold mb-5">借筋・友情・総回数を修正</div>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block font-bold text-app-red text-sm mb-1.5">借筋</label>
+                <input
+                  type="text" inputMode="numeric" pattern="[0-9]*"
+                  value={editDebt}
+                  onChange={e => setEditDebt(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-navy text-2xl text-center focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-app-green text-sm mb-1.5">友情</label>
+                <input
+                  type="text" inputMode="numeric" pattern="[0-9]*"
+                  value={editSavings}
+                  onChange={e => setEditSavings(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-navy text-2xl text-center focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-app-blue text-sm mb-1.5">総回数</label>
+                <input
+                  type="text" inputMode="numeric" pattern="[0-9]*"
+                  value={editTotal}
+                  onChange={e => setEditTotal(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-navy text-2xl text-center focus:outline-none"
+                />
+              </div>
+            </div>
+            <button onClick={saveStats} disabled={statsSaving}
+              className="w-full rounded-2xl py-4 bg-app-navy text-white font-bold text-base active:scale-95 transition-all mb-2 disabled:opacity-50"
+              style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+              {statsSaving ? '保存中...' : '保存する'}
+            </button>
+            <button onClick={() => setStatsTarget(null)} className="w-full py-3 font-bold text-gray-400 text-sm">キャンセル</button>
           </div>
         </div>
       )}
