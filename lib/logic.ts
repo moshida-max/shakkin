@@ -32,8 +32,8 @@ export function calcApproxStats(
   entries: RepEntry[],
   today: string,
 ): { approxDebt: number; approxSavings: number; totalReps: number } {
-  let approxDebt = 0
-  let approxSavings = 0
+  // 累計差分で計算（余剰が過去の借金を相殺する）
+  let netBalance = 0
 
   const start = new Date(membership.start_date)
   const end   = new Date(today)
@@ -43,11 +43,11 @@ export function calcApproxStats(
     const elapsed = daysElapsed(membership.start_date, dateStr)
     const norm    = membership.initial_reps + elapsed
     const done    = sumReps(entries, dateStr)
-    const diff    = done - norm
-    if (diff < 0) approxDebt    += Math.abs(diff)
-    else          approxSavings += diff
+    netBalance   += done - norm
   }
 
-  const totalReps = entries.reduce((s, e) => s + e.reps, 0)
+  const approxDebt    = netBalance < 0 ? Math.abs(netBalance) : 0
+  const approxSavings = netBalance > 0 ? netBalance : 0
+  const totalReps     = entries.reduce((s, e) => s + e.reps, 0)
   return { approxDebt, approxSavings, totalReps }
 }
