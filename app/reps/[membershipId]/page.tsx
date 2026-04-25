@@ -141,15 +141,6 @@ export default function RepsInputPage() {
       <div className="flex-1 px-4 pb-6">
         <div className="app-card p-5">
 
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            {[10, 5, 1].map(n => (
-              <button key={n} onClick={() => quickAdd(n)}
-                className="bg-app-navy text-white rounded-2xl py-4 text-lg font-bold active:scale-95 active:opacity-80 transition-all">
-                +{n}
-              </button>
-            ))}
-          </div>
-
           <div className="flex gap-2 mb-5">
             <input ref={inputRef} type="number" value={inputVal}
               onChange={e => setInputVal(e.target.value)}

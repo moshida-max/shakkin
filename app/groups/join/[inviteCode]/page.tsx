@@ -1,7 +1,13 @@
 'use client'
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase, getOrCreateUserId, getToday } from '@/lib/supabase'
+import { supabase, getOrCreateUserId, getToday, syncProfile } from '@/lib/supabase'
+
+function getUnit(name: string) {
+  if (/プランク|秒/.test(name)) return '秒'
+  if (/ランニング|km|マラソン|走/.test(name)) return 'km'
+  return '回'
+}
 
 export default function JoinGroupPage() {
   const { inviteCode } = useParams<{ inviteCode: string }>()
@@ -20,10 +26,8 @@ export default function JoinGroupPage() {
     setSearching(true)
     setError('')
     setFound(null)
-
     const { data: group } = await supabase
       .from('groups').select('*').eq('invite_code', code).single()
-
     if (group) setFound(group)
     else setError('グループが見つかりませんでした')
     setSearching(false)
@@ -33,25 +37,23 @@ export default function JoinGroupPage() {
     if (!found) return
     setJoining(true)
     setError('')
-
     try {
       const uid   = await getOrCreateUserId()
       const today = getToday()
 
-      // すでに参加していないか確認
-      const { data: existing } = await supabase
-        .from('memberships')
-        .select('id').eq('user_id', uid).eq('group_id', found.id).single()
+      // プロフィール同期
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('kk_profile') : null
+      const p = saved ? JSON.parse(saved) : {}
+      await syncProfile(uid, p.name || '名無し', p.avatar || '?')
 
-      if (existing) {
-        router.push(`/groups/${found.id}`)
-        return
-      }
+      // すでに参加済みなら直接移動
+      const { data: existing } = await supabase
+        .from('memberships').select('id').eq('user_id', uid).eq('group_id', found.id).single()
+      if (existing) { router.push(`/groups/${found.id}`); return }
 
       const { error: mErr } = await supabase
         .from('memberships')
         .insert({ user_id: uid, group_id: found.id, initial_reps: initial, start_date: today })
-
       if (mErr) throw new Error(mErr.message)
       router.push(`/groups/${found.id}`)
     } catch (e: any) {
@@ -59,6 +61,8 @@ export default function JoinGroupPage() {
       setJoining(false)
     }
   }
+
+  const unit = found ? getUnit(found.exercise_name) : '回'
 
   return (
     <div className="min-h-screen bg-app-teal flex flex-col">
@@ -85,9 +89,9 @@ export default function JoinGroupPage() {
               {searching ? '...' : '検索'}
             </button>
           </div>
-          {error && <div className="text-app-red text-sm font-bold">😢 {error}</div>}
+          {error && <div className="text-app-red text-sm font-bold">{error}</div>}
           {!found && !error && (
-            <p className="text-gray-400 text-xs font-bold text-center">📩 招待コードを入力しよう</p>
+            <p className="text-gray-400 text-xs font-bold text-center">招待コードを入力しよう</p>
           )}
         </div>
 
@@ -99,22 +103,21 @@ export default function JoinGroupPage() {
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block font-bold text-app-navy text-sm mb-2">初期回数</label>
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={() => setInitial(v => Math.max(1, v - 1))}
-                    className="app-btn w-12 h-12 bg-gray-100 text-gray-600 rounded-2xl text-xl font-bold active:scale-90">−</button>
-                  <div className="flex-1 text-center">
-                    <span className="text-4xl font-bold text-app-navy">{initial}</span>
-                    <span className="text-gray-400 font-bold ml-1">回</span>
-                  </div>
-                  <button type="button" onClick={() => setInitial(v => Math.min(999, v + 1))}
-                    className="app-btn w-12 h-12 bg-app-navy text-white rounded-2xl text-xl font-bold active:scale-90">＋</button>
-                </div>
+                <label className="block font-bold text-app-navy text-sm mb-1">初期{unit}数</label>
+                <p className="text-gray-400 text-xs font-bold mb-3">1日目のノルマ。毎日1{unit}ずつ増えます。</p>
+                <input
+                  type="number"
+                  value={initial}
+                  onChange={e => setInitial(Math.max(1, Math.min(9999, Number(e.target.value))))}
+                  min={1} max={9999}
+                  inputMode="numeric"
+                  className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-navy text-2xl text-center focus:outline-none"
+                />
               </div>
               <button onClick={handleJoin} disabled={joining}
-                className="w-full rounded-2xl py-4 font-bold text-base bg-app-navy text-white active:scale-95 transition-all"
+                className="w-full rounded-2xl py-4 font-bold text-base bg-app-navy text-white active:scale-95 transition-all disabled:opacity-50"
                 style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
-                {joining ? '参加中...' : '🤝 参加する'}
+                {joining ? '参加中...' : '参加する'}
               </button>
             </div>
           </div>

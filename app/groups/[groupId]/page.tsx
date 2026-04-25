@@ -80,7 +80,8 @@ export default function GroupDetailPage() {
   }
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(group?.invite_code || '').catch(() => {})
+    const url = `${window.location.origin}/groups/join/${group?.invite_code}`
+    await navigator.clipboard.writeText(url).catch(() => {})
     setCopied(true)
     setTimeout(() => { setCopied(false); setShowInvite(false) }, 1500)
   }
@@ -211,17 +212,24 @@ export default function GroupDetailPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end" onClick={() => setShowInvite(false)}>
           <div className="w-full max-w-[390px] mx-auto bg-white rounded-t-3xl p-6 pb-10" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
-            <div className="font-bold text-app-navy text-lg mb-1">招待コードをコピー</div>
-            <div className="text-gray-400 text-sm mb-5">このコードを仲間に共有しよう</div>
-            <div className="bg-app-gray rounded-2xl px-5 py-4 text-center mb-5">
-              <div className="font-bold text-app-navy text-3xl tracking-[0.4em]">{group.invite_code}</div>
+            <div className="font-bold text-app-navy text-lg mb-1">仲間を招待する</div>
+            <div className="text-gray-400 text-sm mb-5">リンクを送るだけで参加できる</div>
+            <div className="bg-app-gray rounded-2xl px-4 py-3 mb-2">
+              <div className="text-gray-400 text-xs font-bold mb-0.5">招待コード</div>
+              <div className="font-bold text-app-navy text-2xl tracking-[0.3em]">{group.invite_code}</div>
+            </div>
+            <div className="bg-app-gray rounded-2xl px-4 py-3 mb-5 overflow-hidden">
+              <div className="text-gray-400 text-xs font-bold mb-0.5">招待リンク</div>
+              <div className="font-bold text-app-navy text-xs truncate">
+                {typeof window !== 'undefined' ? `${window.location.origin}/groups/join/${group.invite_code}` : ''}
+              </div>
             </div>
             <button onClick={handleCopy}
               className={`w-full rounded-2xl py-4 font-bold text-base transition-all mb-2 ${
                 copied ? 'bg-app-green text-white' : 'bg-app-navy text-white active:scale-95'
               }`}
               style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
-              {copied ? '✅ コピーしました！' : '📋 コードをコピーする'}
+              {copied ? 'コピーしました！' : '招待リンクをコピー'}
             </button>
             <button onClick={() => setShowInvite(false)} className="w-full py-3 font-bold text-gray-400 text-sm">キャンセル</button>
           </div>
