@@ -17,7 +17,7 @@ export async function getOrCreateUserId(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession()
   if (session?.user.id) return session.user.id
   const { data, error } = await supabase.auth.signInAnonymously()
-  if (error || !data.user) throw new Error('セッション作成に失敗しました')
+  if (error || !data.user) throw new Error(error?.message ?? 'signInAnonymously failed: no user returned')
   return data.user.id
 }
 

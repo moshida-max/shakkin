@@ -131,7 +131,7 @@ export default function NewGroupPage() {
               canSubmit ? 'bg-app-navy text-white active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'
             }`}
             style={canSubmit ? { boxShadow: '0 4px 16px rgba(0,0,0,0.15)' } : {}}>
-            {loading ? '作成中...' : '✨ グループを作る'}
+            {loading ? '作成中...' : 'グループを作る'}
           </button>
         </form>
       </div>
