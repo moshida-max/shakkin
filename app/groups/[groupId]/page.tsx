@@ -29,10 +29,11 @@ export default function GroupDetailPage() {
   const [copied,     setCopied]     = useState(false)
 
   // 記録シート
-  const [showRecord,  setShowRecord]  = useState(false)
-  const [recEntries,  setRecEntries]  = useState<RepEntry[]>([])
-  const [inputVal,    setInputVal]    = useState('')
-  const [saving,      setSaving]      = useState(false)
+  const [showRecord,   setShowRecord]   = useState(false)
+  const [recEntries,   setRecEntries]   = useState<RepEntry[]>([])
+  const [inputVal,     setInputVal]     = useState('')
+  const [saving,       setSaving]       = useState(false)
+  const [myCardColor,  setMyCardColor]  = useState('#FFCD3C')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const TODAY = getToday()
@@ -80,8 +81,10 @@ export default function GroupDetailPage() {
       })
 
       setMembers(statsArr)
-      const me = statsArr.find(s => s.user.id === uid) || null
+      const meIdx = statsArr.findIndex(s => s.user.id === uid)
+      const me = meIdx >= 0 ? statsArr[meIdx] : null
       setMyStats(me)
+      if (meIdx >= 0) setMyCardColor(CARD_COLORS[meIdx % CARD_COLORS.length])
 
       // 今日の自分の記録をシート用にセット
       if (me) {
@@ -255,35 +258,23 @@ export default function GroupDetailPage() {
       {/* 記録ボトムシート */}
       {showRecord && myStats && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end" onClick={() => setShowRecord(false)}>
-          <div className={`w-full max-w-[390px] mx-auto rounded-t-3xl p-5 pb-10 transition-colors ${recCleared ? 'bg-app-green' : 'bg-white'}`}
+          <div className="w-full max-w-[390px] mx-auto rounded-t-3xl p-5 pb-10"
+            style={{ background: myCardColor }}
             onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 rounded-full bg-black/10 mx-auto mb-4" />
 
             {/* 進捗 */}
-            <div className="flex items-end justify-between mb-3">
-              <div>
-                <div className={`text-xs font-bold mb-0.5 ${recCleared ? 'text-white/70' : 'text-gray-400'}`}>
-                  {group.name} · 今日
-                </div>
-                <div className={`font-bold leading-none ${recCleared ? 'text-white' : 'text-app-navy'}`} style={{ fontSize: '3.5rem' }}>
-                  {totalRecs}
-                </div>
-                <div className={`font-bold text-sm ${recCleared ? 'text-white/70' : 'text-gray-400'}`}>
-                  / {recNorm} {unit}
-                </div>
-              </div>
-              <div style={{ color: recCleared ? 'white' : '#1A1A2E' }}>
-                <ExerciseCharacter exercise={group.exercise_name}
-                  status={totalRecs === 0 ? 'sleeping' : recCleared ? 'cleared' : 'working'}
-                  size={80} />
-              </div>
+            <div className="mb-3">
+              <div className="text-xs font-bold mb-0.5 text-white/70">{group.name} · 今日</div>
+              <div className="font-bold leading-none text-white" style={{ fontSize: '3.5rem' }}>{totalRecs}</div>
+              <div className="font-bold text-sm text-white/70">/ {recNorm} {unit}</div>
             </div>
 
             {/* プログレスバー */}
             <div className="h-2 rounded-full bg-black/10 overflow-hidden mb-4">
               <div className="h-full rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(100, recNorm > 0 ? (totalRecs / recNorm) * 100 : 0)}%`,
-                  background: recCleared ? 'rgba(255,255,255,0.6)' : '#1A1A2E' }} />
+                  background: 'rgba(255,255,255,0.7)' }} />
             </div>
 
             {/* 入力欄 */}
@@ -320,11 +311,9 @@ export default function GroupDetailPage() {
 
             {/* 保存ボタン */}
             <button onClick={handleSave} disabled={saving}
-              className={`w-full rounded-2xl py-4 text-base font-bold transition-all active:scale-95 disabled:opacity-50 ${
-                recCleared ? 'bg-white text-app-green' : 'bg-app-navy text-white'
-              }`}
+              className="w-full rounded-2xl py-4 text-base font-bold bg-white text-app-navy transition-all active:scale-95 disabled:opacity-50"
               style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
-              {saving ? '保存中...' : recCleared ? 'ノルマ達成！保存する' : '記録を保存する'}
+              {saving ? '保存中...' : '記録を保存する'}
             </button>
           </div>
         </div>
