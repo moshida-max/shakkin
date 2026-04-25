@@ -1,15 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('Supabase env vars missing:', { SUPABASE_URL: !!SUPABASE_URL, SUPABASE_KEY: !!SUPABASE_KEY })
-}
-
 export const supabase = createClient(
-  SUPABASE_URL ?? '',
-  SUPABASE_KEY ?? ''
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
 /** 今日の日付 JST */
@@ -19,13 +12,17 @@ export function getToday(): string {
   return jst.toISOString().split('T')[0]
 }
 
-/** 匿名セッションを取得 or 作成してユーザーIDを返す */
-export async function getOrCreateUserId(): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session?.user.id) return session.user.id
-  const { data, error } = await supabase.auth.signInAnonymously()
-  if (error || !data.user) throw new Error(error?.message ?? 'signInAnonymously failed: no user returned')
-  return data.user.id
+const USER_ID_KEY = 'shakkin_user_id'
+
+/** localStorageからユーザーIDを取得 or 生成（Supabase authなし） */
+export function getOrCreateUserId(): Promise<string> {
+  if (typeof window === 'undefined') return Promise.resolve('server')
+  let id = localStorage.getItem(USER_ID_KEY)
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(USER_ID_KEY, id)
+  }
+  return Promise.resolve(id)
 }
 
 /** プロフィールをSupabaseに同期 */
