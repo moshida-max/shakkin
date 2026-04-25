@@ -1,9 +1,12 @@
 import type { Membership, RepEntry, UserStatus } from './types'
 
+function toUtcMs(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return Date.UTC(y, m - 1, d)
+}
+
 export function daysElapsed(startDate: string, today: string): number {
-  const start = new Date(startDate)
-  const end   = new Date(today)
-  return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 86400000))
+  return Math.max(0, Math.floor((toUtcMs(today) - toUtcMs(startDate)) / 86400000))
 }
 
 export function todayNorm(membership: Membership, today: string): number {
@@ -35,23 +38,36 @@ export function calcApproxStats(
   let debt       = 0
   let friendship = 0
 
-  const start = new Date(membership.start_date)
-  const end   = new Date(today)
+  const startMs     = toUtcMs(membership.start_date)
+  const todayMs     = toUtcMs(today)
+  const yesterdayMs = todayMs - 86400000 // 今日はまだ終わっていないので除外
 
-  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0]
-    const elapsed = daysElapsed(membership.start_date, dateStr)
+  // 借筋は昨日まで（今日はまだ終わっていないので加算しない）
+  for (let ms = startMs; ms <= yesterdayMs; ms += 86400000) {
+    const dateStr = new Date(ms).toISOString().split('T')[0]
+    const elapsed = Math.floor((ms - startMs) / 86400000)
     const norm    = membership.initial_reps + elapsed
     const done    = sumReps(entries, dateStr)
 
     if (done >= norm) {
-      const surplus   = done - norm
-      const debtPaid  = Math.min(debt, surplus)
-      debt            -= debtPaid
-      friendship      += surplus - debtPaid
+      const surplus  = done - norm
+      const debtPaid = Math.min(debt, surplus)
+      debt           -= debtPaid
+      friendship     += surplus - debtPaid
     } else {
       debt += norm - done
     }
+  }
+
+  // 友情・借筋返済は今日の記録も即時反映（借筋の加算は今日はしない）
+  const todayElapsed = Math.floor((todayMs - startMs) / 86400000)
+  const todayNormVal = membership.initial_reps + todayElapsed
+  const todayDone    = sumReps(entries, today)
+  if (todayDone > todayNormVal) {
+    const surplus  = todayDone - todayNormVal
+    const debtPaid = Math.min(debt, surplus)
+    debt           -= debtPaid
+    friendship     += surplus - debtPaid
   }
 
   const totalReps = entries.reduce((s, e) => s + e.reps, 0)

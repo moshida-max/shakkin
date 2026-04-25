@@ -221,26 +221,36 @@ export default function GroupDetailPage() {
             const charStatus = ms.todayReps === 0 ? 'sleeping' : ms.status === 'cleared' ? 'cleared' : 'working'
             return (
               <div key={ms.membership.id} className="app-card overflow-hidden">
-                <div className="px-3 pt-2 pb-1 relative" style={{ background: cardColor }}>
-                  {isMe && (
-                    <span className="absolute top-2 right-2 text-[9px] bg-white/40 text-white rounded-full px-1.5 py-0.5 font-bold">自分</span>
-                  )}
-                  <div className="flex justify-center" style={{ color: '#1A1A2E' }}>
-                    <ExerciseCharacter exercise={group.exercise_name} status={charStatus} size={64} />
-                  </div>
-                  <div className="text-center font-bold text-white text-sm leading-tight truncate">{ms.user.name}</div>
-                  <div className="text-center text-white/70 text-[10px] font-bold mb-1">{ms.membership.consecutive_clear_days}日連続</div>
-                </div>
-                <div className="px-3 py-2.5">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div>
-                      <span className="font-bold text-app-navy text-xl">{ms.todayReps}</span>
-                      <span className="text-gray-400 text-xs font-bold">/{ms.todayNorm}</span>
-                    </div>
+                {/* カラーヘッダー */}
+                <div className="relative pb-2" style={{ background: cardColor }}>
+                  {/* ステータスバッジ（左上） */}
+                  <div className="absolute top-2 left-2 z-10">
                     <StatusBadge status={ms.status} size="sm" />
                   </div>
+                  {/* 自分バッジ（右上） */}
+                  {isMe && (
+                    <span className="absolute top-2 right-2 z-10 text-[9px] bg-white/30 text-white rounded-full px-1.5 py-0.5 font-bold">自分</span>
+                  )}
+                  {/* キャラクター（高さ固定コンテナ） */}
+                  <div className="flex justify-center items-end h-[80px] overflow-hidden pt-1" style={{ color: '#1A1A2E' }}>
+                    <ExerciseCharacter exercise={group.exercise_name} status={charStatus} size={64} />
+                  </div>
+                  {/* 名前・連続日数 */}
+                  <div className="px-2">
+                    <div className="text-center font-bold text-white text-sm leading-tight truncate">{ms.user.name}</div>
+                    {ms.membership.consecutive_clear_days > 0 && (
+                      <div className="text-center text-white/80 text-[10px] font-bold">🔥 {ms.membership.consecutive_clear_days}日</div>
+                    )}
+                  </div>
+                </div>
+                {/* 統計エリア */}
+                <div className="px-3 py-2.5">
+                  <div className="flex items-baseline gap-1 mb-1.5">
+                    <span className="font-bold text-app-navy text-2xl">{ms.todayReps}</span>
+                    <span className="text-gray-400 text-xs font-bold">/ {ms.todayNorm}</span>
+                  </div>
                   <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-2">
-                    <div className="h-full rounded-full"
+                    <div className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${progress}%`, background: ms.status === 'cleared' ? '#5EC462' : cardColor }} />
                   </div>
                   <div className="grid grid-cols-3 gap-1 text-center">
@@ -259,7 +269,7 @@ export default function GroupDetailPage() {
       {/* 記録ボトムシート */}
       {showRecord && myStats && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end" onClick={() => setShowRecord(false)}>
-          <div className="w-full max-w-[390px] mx-auto rounded-t-3xl p-5 pb-10"
+          <div className="w-full rounded-t-3xl p-5 pb-10"
             style={{ background: myCardColor }}
             onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 rounded-full bg-black/10 mx-auto mb-4" />
@@ -279,14 +289,14 @@ export default function GroupDetailPage() {
             </div>
 
             {/* 入力欄 */}
-            <div className="flex gap-2 mb-3">
-              <input ref={inputRef} type="number" value={inputVal}
-                onChange={e => setInputVal(e.target.value)}
+            <div className="space-y-2 mb-3">
+              <input ref={inputRef} type="text" inputMode="numeric" pattern="[0-9]*" value={inputVal}
+                onChange={e => setInputVal(e.target.value.replace(/[^0-9]/g, ''))}
                 onKeyDown={e => e.key === 'Enter' && addEntry()}
-                placeholder={`${unit}数を入力`} min={1} inputMode="numeric"
-                className="flex-1 bg-black/10 rounded-2xl px-4 py-3 font-bold text-app-navy text-lg placeholder:text-black/30 focus:outline-none" />
+                placeholder={`${unit}数を入力`}
+                className="w-full bg-black/10 rounded-2xl px-4 py-3 font-bold text-app-navy text-2xl text-center placeholder:text-black/30 focus:outline-none" />
               <button onClick={addEntry} disabled={!inputVal || parseInt(inputVal) <= 0}
-                className="bg-app-navy text-white rounded-2xl px-5 font-bold text-base active:scale-95 transition-all disabled:opacity-30">
+                className="w-full bg-app-navy text-white rounded-2xl py-3 font-bold text-base active:scale-95 transition-all disabled:opacity-30">
                 追加
               </button>
             </div>
@@ -323,7 +333,7 @@ export default function GroupDetailPage() {
       {/* 招待モーダル */}
       {showInvite && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end" onClick={() => setShowInvite(false)}>
-          <div className="w-full max-w-[390px] mx-auto bg-white rounded-t-3xl p-6 pb-10" onClick={e => e.stopPropagation()}>
+          <div className="w-full bg-white rounded-t-3xl p-6 pb-10" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
             <div className="font-bold text-app-navy text-lg mb-1">仲間を招待する</div>
             <div className="text-gray-400 text-sm mb-5">リンクを送るだけで参加できる</div>

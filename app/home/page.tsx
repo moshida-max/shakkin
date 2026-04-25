@@ -18,7 +18,7 @@ export default function HomePage() {
   const [editingName, setEditingName] = useState(false)
   const [editDraft,   setEditDraft]   = useState('')
   const [showPicker,  setShowPicker]  = useState(false)
-  const [groups,      setGroups]      = useState<{ group: any; myStats: MemberStats }[]>([])
+  const [groups,      setGroups]      = useState<{ group: any; myStats: MemberStats; members: { name: string; avatar: string }[] }[]>([])
   const [loading,     setLoading]     = useState(true)
 
   useEffect(() => { loadAll() }, [])
@@ -55,12 +55,27 @@ export default function HomePage() {
 
     if (!mems || mems.length === 0) { setGroups([]); return }
 
-    const memIds = mems.map(m => m.id)
-    const { data: entries } = await supabase
-      .from('rep_entries').select('*').in('membership_id', memIds)
+    const memIds   = mems.map(m => m.id)
+    const groupIds = mems.map(m => m.group_id)
+    const TODAY    = getToday()
+
+    const [{ data: entries }, { data: allGroupMems }] = await Promise.all([
+      supabase.from('rep_entries').select('*').in('membership_id', memIds),
+      supabase.from('memberships').select('user_id, group_id').in('group_id', groupIds),
+    ])
+
+    const allUserIds = Array.from(new Set((allGroupMems || []).map((m: any) => m.user_id)))
+    const { data: profiles } = await supabase.from('profiles').select('id, name, avatar').in('id', allUserIds)
+    const profileMap: Record<string, any> = Object.fromEntries((profiles || []).map((p: any) => [p.id, p]))
+
+    const membersByGroup: Record<string, { name: string; avatar: string }[]> = {}
+    for (const m of (allGroupMems || []) as any[]) {
+      if (!membersByGroup[m.group_id]) membersByGroup[m.group_id] = []
+      const p = profileMap[m.user_id]
+      membersByGroup[m.group_id].push({ name: p?.name || '?', avatar: p?.avatar || p?.name?.[0] || '?' })
+    }
 
     const allEntries = entries || []
-    const TODAY = getToday()
 
     const stats = mems.map(mem => {
       const membership: Membership = {
@@ -71,10 +86,10 @@ export default function HomePage() {
         consecutive_clear_days: mem.consecutive_clear_days,
         total_cleared_reps: mem.total_cleared_reps || 0,
       }
-      const myEntries = allEntries.filter(e => e.membership_id === mem.id)
-      const norm       = todayNorm(membership, TODAY)
+      const myEntries      = allEntries.filter(e => e.membership_id === mem.id)
+      const norm           = todayNorm(membership, TODAY)
       const todayRepsCount = sumReps(myEntries, TODAY)
-      const status     = calcStatus(membership, todayRepsCount, norm)
+      const status         = calcStatus(membership, todayRepsCount, norm)
       const { approxDebt, approxSavings, totalReps } = calcApproxStats(membership, myEntries, TODAY)
       return {
         group: mem.groups,
@@ -83,6 +98,7 @@ export default function HomePage() {
           todayNorm: norm, todayReps: todayRepsCount,
           status, approxDebt, approxSavings, totalReps,
         } as MemberStats,
+        members: membersByGroup[mem.group_id] || [],
       }
     })
     setGroups(stats)
@@ -118,8 +134,13 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-app-yellow flex flex-col">
 
+      {/* ロゴヘッダー */}
+      <div className="pt-safe px-5 pb-0">
+        <div className="text-app-navy font-bold text-2xl tracking-tight mb-3">借筋</div>
+      </div>
+
       {/* プロフィールカード */}
-      <div className="pt-safe px-4 pb-0">
+      <div className="px-4 pb-0">
         <div className="app-card p-4 mb-4">
           <div className="flex items-center gap-3 mb-2">
             <button onClick={() => setShowPicker(true)}
@@ -151,7 +172,7 @@ export default function HomePage() {
       <div className="flex-1 px-4 pb-10 space-y-4">
         <div className="flex items-center justify-between">
           <span className="font-bold text-app-navy text-sm">参加中のグループ</span>
-          <Link href="/groups/new" className="app-btn-dark text-xs px-3 py-2">＋ 作る</Link>
+          <Link href="/groups/new" className="app-btn-dark text-xs px-3 py-2">＋ グループを作る</Link>
         </div>
 
         {groups.length === 0 && (
@@ -162,11 +183,13 @@ export default function HomePage() {
           </div>
         )}
 
-        {groups.map(({ group, myStats }) => {
-          const progress = myStats.todayNorm > 0
+        {groups.map(({ group, myStats, members }) => {
+          const progress      = myStats.todayNorm > 0
             ? Math.min(100, (myStats.todayReps / myStats.todayNorm) * 100) : 0
           const isCleared     = myStats.status === 'cleared'
           const isBlacklisted = myStats.status === 'blacklisted'
+          const showMembers   = members.slice(0, 6)
+          const extraCount    = members.length - showMembers.length
 
           return (
             <Link key={group.id} href={`/groups/${group.id}`} className="block">
@@ -175,7 +198,7 @@ export default function HomePage() {
                   <div className="absolute top-0 right-3 opacity-90" style={{ color: '#1A1A2E' }}>
                     <ExerciseCharacter
                       exercise={group.exercise_name}
-                      status={myStats.todayReps === 0 ? 'sleeping' : isCleared ? 'cleared' : 'working'}
+                      status="working"
                       size={72}
                     />
                   </div>
@@ -186,6 +209,23 @@ export default function HomePage() {
                     </div>
                     {isCleared     && <span className="app-tag bg-app-green text-white text-xs shrink-0">返済！</span>}
                     {isBlacklisted && <span className="app-tag bg-app-red   text-white text-xs shrink-0">ブラック</span>}
+                  </div>
+                  {/* メンバーアイコン */}
+                  <div className="flex items-center mt-2" style={{ gap: 0 }}>
+                    {showMembers.map((m, i) => (
+                      <div key={i}
+                        className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs font-bold text-app-navy border-2 border-gray-50"
+                        style={{ marginLeft: i === 0 ? 0 : '-6px', zIndex: showMembers.length - i }}>
+                        {m.avatar}
+                      </div>
+                    ))}
+                    {extraCount > 0 && (
+                      <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-500 border-2 border-gray-50"
+                        style={{ marginLeft: '-6px' }}>
+                        +{extraCount}
+                      </div>
+                    )}
+                    <span className="text-gray-400 text-xs font-bold ml-2">{members.length}人</span>
                   </div>
                 </div>
 

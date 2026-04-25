@@ -25,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja">
       <body className={`${mPlusRounded.variable} font-base bg-white`}>
-        <div className="mx-auto max-w-[390px] min-h-screen relative overflow-x-hidden">
+        <div className="w-full min-h-screen relative overflow-x-hidden">
           {children}
         </div>
       </body>

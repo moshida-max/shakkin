@@ -9,20 +9,79 @@ function getUnit(name: string) {
   return '回'
 }
 
+function JoinForm({ group, onJoin, error, joining }: {
+  group: any
+  onJoin: (name: string, initial: number) => void
+  error: string
+  joining: boolean
+}) {
+  const unit = getUnit(group.exercise_name)
+
+  const [name,        setName]        = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try { return JSON.parse(localStorage.getItem('kk_profile') || '{}').name || '' } catch { return '' }
+  })
+  const [initialStr,  setInitialStr]  = useState('')
+
+  const canJoin = name.trim().length > 0 && parseInt(initialStr) > 0 && !joining
+
+  return (
+    <div className="space-y-4">
+      {/* 名前 */}
+      <div>
+        <label className="block font-bold text-app-navy text-sm mb-1">あなたの名前</label>
+        <input
+          type="text"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="名前を入力"
+          maxLength={20}
+          className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-navy text-lg focus:outline-none"
+        />
+      </div>
+
+      {/* 初期回数 */}
+      <div>
+        <label className="block font-bold text-app-navy text-sm mb-1">初期{unit}数</label>
+        <p className="text-gray-400 text-xs font-bold mb-2">1日目のノルマ。毎日1{unit}ずつ増えます。</p>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={initialStr}
+          onChange={e => setInitialStr(e.target.value.replace(/[^0-9]/g, ''))}
+          placeholder="例：10"
+          autoComplete="off"
+          className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-navy text-2xl text-center focus:outline-none"
+        />
+      </div>
+
+      {error && <div className="text-app-red text-sm font-bold">{error}</div>}
+
+      <button
+        onClick={() => onJoin(name.trim(), parseInt(initialStr))}
+        disabled={!canJoin}
+        className={`w-full rounded-2xl py-4 font-bold text-base transition-all active:scale-95 ${
+          canJoin ? 'bg-app-navy text-white' : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+        }`}
+        style={canJoin ? { boxShadow: '0 4px 16px rgba(0,0,0,0.15)' } : {}}>
+        {joining ? '参加中...' : `${group.name} に参加する`}
+      </button>
+    </div>
+  )
+}
+
 export default function JoinGroupPage() {
   const { inviteCode } = useParams<{ inviteCode: string }>()
   const router = useRouter()
 
   const hasCode = inviteCode !== '---'
 
-  // コードが入っている場合は直接グループ検索
   const [group,    setGroup]    = useState<any>(null)
-  const [initial,  setInitial]  = useState(10)
   const [joining,  setJoining]  = useState(false)
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(hasCode)
 
-  // コードなしの場合（手動入力）
   const [code,      setCode]      = useState('')
   const [searching, setSearching] = useState(false)
 
@@ -50,17 +109,20 @@ export default function JoinGroupPage() {
     setSearching(false)
   }
 
-  const handleJoin = async () => {
-    if (!group) return
+  const handleJoin = async (name: string, initial: number) => {
+    if (!group || !name || initial <= 0) return
     setJoining(true)
     setError('')
     try {
       const uid   = await getOrCreateUserId()
       const today = getToday()
 
+      // 名前をlocalStorageに保存してプロフィール同期
       const saved = typeof window !== 'undefined' ? localStorage.getItem('kk_profile') : null
       const p = saved ? JSON.parse(saved) : {}
-      await syncProfile(uid, p.name || '名無し', p.avatar || '?')
+      const avatar = p.avatar || name[0] || '?'
+      localStorage.setItem('kk_profile', JSON.stringify({ name, avatar }))
+      await syncProfile(uid, name, avatar)
 
       const { data: existing } = await supabase
         .from('memberships').select('id').eq('user_id', uid).eq('group_id', group.id).single()
@@ -77,9 +139,6 @@ export default function JoinGroupPage() {
     }
   }
 
-  const unit = group ? getUnit(group.exercise_name) : '回'
-
-  // URLにコードが入っていてロード中
   if (loading) {
     return (
       <div className="min-h-screen bg-app-teal flex items-center justify-center">
@@ -88,38 +147,19 @@ export default function JoinGroupPage() {
     )
   }
 
-  // URLにコードが入っていてグループが見つかった → 参加画面のみ表示
   if (hasCode && group) {
     return (
       <div className="min-h-screen bg-app-teal flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-sm">
-          <div className="app-card overflow-hidden mb-4">
+          <div className="app-card overflow-hidden">
             <div className="bg-app-yellow px-5 py-5">
               <div className="text-app-navy/60 text-xs font-bold mb-1">グループに招待されています</div>
               <div className="font-bold text-app-navy text-2xl">{group.name}</div>
               <div className="text-app-navy/60 text-sm font-bold mt-0.5">{group.exercise_name}</div>
             </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block font-bold text-app-navy text-sm mb-1">自分の初期{unit}数</label>
-                <p className="text-gray-400 text-xs font-bold mb-3">1日目のノルマ。毎日1{unit}ずつ増えます。</p>
-                <input
-                  type="number"
-                  value={initial}
-                  onChange={e => setInitial(Math.max(1, Math.min(9999, Number(e.target.value))))}
-                  min={1} max={9999}
-                  inputMode="numeric"
-                  className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-navy text-2xl text-center focus:outline-none"
-                />
-              </div>
-              {error && <div className="text-app-red text-sm font-bold">{error}</div>}
-              <button onClick={handleJoin} disabled={joining}
-                className="w-full rounded-2xl py-4 font-bold text-lg bg-app-navy text-white active:scale-95 transition-all disabled:opacity-50"
-                style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
-                {joining ? '参加中...' : `${group.name} に参加する`}
-              </button>
-              <button onClick={() => router.push('/home')}
-                className="w-full py-3 font-bold text-gray-400 text-sm">
+            <div className="p-5">
+              <JoinForm group={group} onJoin={handleJoin} error={error} joining={joining} />
+              <button onClick={() => router.push('/home')} className="w-full pt-4 font-bold text-gray-400 text-sm">
                 ホームに戻る
               </button>
             </div>
@@ -129,7 +169,6 @@ export default function JoinGroupPage() {
     )
   }
 
-  // URLにコードが入っていてグループが見つからなかった
   if (hasCode && !group) {
     return (
       <div className="min-h-screen bg-app-teal flex flex-col items-center justify-center px-6">
@@ -145,7 +184,6 @@ export default function JoinGroupPage() {
     )
   }
 
-  // コードなし（手動入力）
   return (
     <div className="min-h-screen bg-app-teal flex flex-col">
       <div className="pt-safe px-5 pb-4">
@@ -172,7 +210,7 @@ export default function JoinGroupPage() {
               {searching ? '...' : '検索'}
             </button>
           </div>
-          {error && <div className="text-app-red text-sm font-bold">{error}</div>}
+          {error && !group && <div className="text-app-red text-sm font-bold">{error}</div>}
           {!group && !error && (
             <p className="text-gray-400 text-xs font-bold text-center">招待コードを入力しよう</p>
           )}
@@ -184,25 +222,8 @@ export default function JoinGroupPage() {
               <div className="font-bold text-app-navy text-xl">{group.name}</div>
               <div className="text-app-navy/60 text-sm">{group.exercise_name}</div>
             </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block font-bold text-app-navy text-sm mb-1">自分の初期{unit}数</label>
-                <p className="text-gray-400 text-xs font-bold mb-3">1日目のノルマ。毎日1{unit}ずつ増えます。</p>
-                <input
-                  type="number"
-                  value={initial}
-                  onChange={e => setInitial(Math.max(1, Math.min(9999, Number(e.target.value))))}
-                  min={1} max={9999}
-                  inputMode="numeric"
-                  className="w-full bg-app-gray rounded-2xl px-4 py-3 font-bold text-app-navy text-2xl text-center focus:outline-none"
-                />
-              </div>
-              {error && <div className="text-app-red text-sm font-bold">{error}</div>}
-              <button onClick={handleJoin} disabled={joining}
-                className="w-full rounded-2xl py-4 font-bold text-base bg-app-navy text-white active:scale-95 transition-all disabled:opacity-50"
-                style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
-                {joining ? '参加中...' : '参加する'}
-              </button>
+            <div className="p-5">
+              <JoinForm group={group} onJoin={handleJoin} error={error} joining={joining} />
             </div>
           </div>
         )}
