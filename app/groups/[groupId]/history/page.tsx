@@ -154,7 +154,7 @@ export default function GroupHistoryPage() {
   return (
     <div className="min-h-screen bg-app-pink flex flex-col">
       <div className="pt-safe px-5 pb-4">
-        <button onClick={() => router.back()} className="text-app-navy/60 font-bold text-sm mb-3 block">← もどる</button>
+        <button onClick={() => router.push(`/groups/${groupId}`)} className="text-app-navy/60 font-bold text-sm mb-3 block">← グループに戻る</button>
         <div className="flex items-center justify-between gap-2">
           <div className="app-pill-title text-xl flex-1 min-w-0 truncate">{group.name}</div>
           <button

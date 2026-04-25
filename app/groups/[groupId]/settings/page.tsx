@@ -65,7 +65,7 @@ export default function GroupSettingsPage() {
   return (
     <div className="min-h-screen bg-app-pink flex flex-col">
       <div className="pt-safe px-5 pb-5">
-        <button onClick={() => router.back()} className="text-app-navy/60 font-bold text-sm mb-3 block">← もどる</button>
+        <button onClick={() => router.push(`/groups/${groupId}`)} className="text-app-navy/60 font-bold text-sm mb-3 block">← グループに戻る</button>
         <div className="app-pill-title text-xl mb-1">{group.name}</div>
         <div className="text-app-navy/60 text-sm font-bold">グループ設定</div>
       </div>
