@@ -145,7 +145,7 @@ export default function GroupDetailPage() {
   const recCleared  = totalRecs >= recNorm
 
   return (
-    <div className="min-h-screen bg-app-pink flex flex-col pb-16">
+    <div className="min-h-screen bg-app-pink flex flex-col pb-10">
 
       {/* ヘッダー */}
       <div className="pt-safe px-5 pb-4">
@@ -251,25 +251,6 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
-      {/* 下部ナビ */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around items-center h-16 z-40"
-        style={{ boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
-        <Link href="/home" className="flex flex-col items-center gap-0.5 text-gray-400 active:text-app-navy transition-colors px-6">
-          <span className="text-xl">🏠</span>
-          <span className="text-[10px] font-bold">ホーム</span>
-        </Link>
-        {myStats && (
-          <button onClick={openRecord}
-            className="flex flex-col items-center gap-0.5 bg-app-navy text-white rounded-2xl px-8 py-2 active:scale-95 transition-all"
-            style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
-            <span className="text-[10px] font-bold">記録する</span>
-          </button>
-        )}
-        <Link href={`/groups/${groupId}/history`} className="flex flex-col items-center gap-0.5 text-gray-400 active:text-app-navy transition-colors px-6">
-          <span className="text-xl">📋</span>
-          <span className="text-[10px] font-bold">履歴</span>
-        </Link>
-      </div>
 
       {/* 記録ボトムシート */}
       {showRecord && myStats && (
