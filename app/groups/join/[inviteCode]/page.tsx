@@ -9,11 +9,6 @@ function getUnit(name: string) {
   return '回'
 }
 
-function subtractDays(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const ms = Date.UTC(y, m - 1, d) - days * 86400000
-  return new Date(ms).toISOString().split('T')[0]
-}
 
 function JoinForm({ group, onJoin, error, joining }: {
   group: any
@@ -119,7 +114,7 @@ function JoinForm({ group, onJoin, error, joining }: {
             {normError && <div className="text-app-red text-xs font-bold mt-1">{normError}</div>}
             {normStr && todayNorm >= initial && initial > 0 && (
               <div className="text-app-green text-xs font-bold mt-1">
-                → 開始日：{subtractDays(getToday(), todayNorm - initial)}（{todayNorm - initial}日前）
+                → 1日目のノルマを {todayNorm} に設定（毎日+1{unit}ずつ増加）
               </div>
             )}
           </div>
@@ -219,18 +214,17 @@ export default function JoinGroupPage() {
         .from('memberships').select('id').eq('user_id', uid).eq('group_id', group.id).single()
       if (existing) { router.push('/home'); return }
 
-      // 今日のノルマが指定されていれば開始日を逆算
-      const startDate = todayNorm !== null && todayNorm >= initial
-        ? subtractDays(today, todayNorm - initial)
-        : today
+      // 今日のノルマが指定されていれば initial_reps をそれに合わせる
+      // start_date は常に今日にする（過去日を使うと空記録が大量の借筋として計算されるため）
+      const effectiveInitial = todayNorm !== null && todayNorm >= initial ? todayNorm : initial
 
       const { error: mErr } = await supabase
         .from('memberships')
         .insert({
           user_id: uid,
           group_id: group.id,
-          initial_reps: initial,
-          start_date: startDate,
+          initial_reps: effectiveInitial,
+          start_date: today,
           debt_balance: debt > 0 ? debt : 0,
         })
       if (mErr) throw new Error(mErr.message)
