@@ -7,6 +7,8 @@ import ExerciseCharacter from '@/components/ExerciseCharacter'
 import StatusBadge from '@/components/StatusBadge'
 import type { Membership, MemberStats } from '@/lib/types'
 
+const CARD_COLORS = ['#74B9FF', '#5EC462', '#FFCD3C', '#FF8FAD', '#A29BFE', '#4ECDC4']
+
 const AVATAR_OPTIONS = [
   '💪','🔥','⚡','🌸','🦁','🐯','🦊','🐻',
   '🎯','👊','🥊','🏃','🌟','🍎','🐲','🦅',
@@ -211,8 +213,8 @@ export default function HomePage() {
                     <div className="flex items-center" style={{ gap: 0 }}>
                       {showMembers.map((m, i) => (
                         <div key={i}
-                          className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs font-bold text-app-navy border-2 border-gray-50"
-                          style={{ marginLeft: i === 0 ? 0 : '-6px', zIndex: showMembers.length - i }}>
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-gray-50"
+                          style={{ marginLeft: i === 0 ? 0 : '-6px', zIndex: showMembers.length - i, background: CARD_COLORS[i % CARD_COLORS.length] }}>
                           {m.avatar}
                         </div>
                       ))}
