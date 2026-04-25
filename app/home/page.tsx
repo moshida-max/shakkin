@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { supabase, getOrCreateUserId, getToday, syncProfile } from '@/lib/supabase'
 import { todayNorm, sumReps, calcStatus, calcApproxStats } from '@/lib/logic'
 import ExerciseCharacter from '@/components/ExerciseCharacter'
+import StatusBadge from '@/components/StatusBadge'
 import type { Membership, MemberStats } from '@/lib/types'
 
 const AVATAR_OPTIONS = [
@@ -186,49 +187,51 @@ export default function HomePage() {
         {groups.map(({ group, myStats, members }) => {
           const progress      = myStats.todayNorm > 0
             ? Math.min(100, (myStats.todayReps / myStats.todayNorm) * 100) : 0
-          const isCleared     = myStats.status === 'cleared'
-          const isBlacklisted = myStats.status === 'blacklisted'
-          const showMembers   = members.slice(0, 6)
+          const isCleared   = myStats.status === 'cleared'
+          const showMembers = members.slice(0, 6)
           const extraCount    = members.length - showMembers.length
 
           return (
             <Link key={group.id} href={`/groups/${group.id}`} className="block">
               <div className="app-card overflow-hidden">
-                <div className="px-4 pt-3 pb-3 bg-gray-50 relative overflow-hidden">
-                  <div className="absolute top-0 right-3 opacity-90" style={{ color: '#1A1A2E' }}>
-                    <ExerciseCharacter
-                      exercise={group.exercise_name}
-                      status="working"
-                      size={72}
-                    />
-                  </div>
-                  <div className="flex items-start justify-between gap-2 pr-16">
-                    <div>
-                      <div className="font-bold text-app-navy text-lg leading-tight">{group.name}</div>
-                      <div className="text-gray-400 text-sm font-bold">{group.exercise_name}</div>
+                {/* カードヘッダー: テキスト左・キャラ右（absoluteなし） */}
+                <div className="px-4 pt-3 pb-3 bg-gray-50 flex items-end gap-2">
+                  {/* 左: グループ名・バッジ・メンバー */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start gap-2 mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-app-navy text-lg leading-tight truncate">{group.name}</div>
+                        <div className="text-gray-400 text-sm font-bold">{group.exercise_name}</div>
+                      </div>
+                      <div className="shrink-0 pt-0.5">
+                        <StatusBadge status={myStats.status} size="sm" />
+                      </div>
                     </div>
-                    {isCleared     && <span className="app-tag bg-app-green text-white text-xs shrink-0">返済！</span>}
-                    {isBlacklisted && <span className="app-tag bg-app-red   text-white text-xs shrink-0">ブラック</span>}
+                    {/* メンバーアイコン */}
+                    <div className="flex items-center" style={{ gap: 0 }}>
+                      {showMembers.map((m, i) => (
+                        <div key={i}
+                          className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs font-bold text-app-navy border-2 border-gray-50"
+                          style={{ marginLeft: i === 0 ? 0 : '-6px', zIndex: showMembers.length - i }}>
+                          {m.avatar}
+                        </div>
+                      ))}
+                      {extraCount > 0 && (
+                        <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-500 border-2 border-gray-50"
+                          style={{ marginLeft: '-6px' }}>
+                          +{extraCount}
+                        </div>
+                      )}
+                      <span className="text-gray-400 text-xs font-bold ml-2">{members.length}人</span>
+                    </div>
                   </div>
-                  {/* メンバーアイコン */}
-                  <div className="flex items-center mt-2" style={{ gap: 0 }}>
-                    {showMembers.map((m, i) => (
-                      <div key={i}
-                        className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs font-bold text-app-navy border-2 border-gray-50"
-                        style={{ marginLeft: i === 0 ? 0 : '-6px', zIndex: showMembers.length - i }}>
-                        {m.avatar}
-                      </div>
-                    ))}
-                    {extraCount > 0 && (
-                      <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-500 border-2 border-gray-50"
-                        style={{ marginLeft: '-6px' }}>
-                        +{extraCount}
-                      </div>
-                    )}
-                    <span className="text-gray-400 text-xs font-bold ml-2">{members.length}人</span>
+                  {/* 右: キャラクター（absoluteなし） */}
+                  <div className="shrink-0" style={{ color: '#1A1A2E' }}>
+                    <ExerciseCharacter exercise={group.exercise_name} status="working" size={68} />
                   </div>
                 </div>
 
+                {/* 下段: 回数・プログレス・統計 */}
                 <div className="px-4 py-3">
                   <div className="flex items-baseline gap-1 mb-2">
                     <span className="text-4xl font-bold text-app-navy">{myStats.todayReps}</span>
